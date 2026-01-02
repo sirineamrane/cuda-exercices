@@ -10,7 +10,7 @@ __global__ void dense_forward(
     const float* W,
     float* y
 ) {
-    __shared__ float x_tile[TILE];
+    __shared__ float x_tile[TILE]; // on partage x à tous lesneurones et on le charge une seule fois par block
 
     int out = blockIdx.x * blockDim.x + threadIdx.x;
     if (out >= OUTPUT_SIZE) return;
@@ -29,14 +29,14 @@ __global__ void dense_forward(
 
         // on calcule partiellement
         for (int i = 0; i < TILE; i++) {
-            sum += x_tile[i] * W[(t + i) * OUTPUT_SIZE + out];
+            sum += x_tile[i] * W[(t + i) * OUTPUT_SIZE + out]; // c une variable locale = elle go dans registres (mémoire ultra rapide)
         }
 
         __syncthreads(); 
     }
 
     // calcul final 
-    y[out] = sum;
+    y[out] = sum; //chaque thread écrit sa propre case = 0 conflit (pas besoin d'atomic)
 }
 
 int main() {
@@ -66,3 +66,4 @@ int main() {
     cudaFree(dx); cudaFree(dW); cudaFree(dy);
     free(x); free(W); free(y);
 }
+
